@@ -7,25 +7,15 @@ import pandas as pd
 import ALifeStdDev.phylogeny as phylodev
 import networkx as nx
 
-if len(sys.argv) <= 3:
-    print("Usage: python abstract_phylogenies.py [Symbiont Phylogeny Snapshot file] [Host Phylogeny Snapshot file] [Interaction Snapshot file] [resolution (optional)]")
 
-sym_filename = sys.argv[1]
-host_filename = sys.argv[2]
-interaction_filename = sys.argv[3]
-
-
-def processs_phylo(filename):
+def processs_phylo(filename, num_bins=1000):
     df = phylodev.load_phylogeny_to_pandas_df(filename)
 
     min_val = -1
     max_val = 1
-    num_bins = 1000
-    if len(sys.argv) > 4:
-        num_bins = int(sys.argv[4])
-    bin_width = (max_val - min_val)/num_bins
 
-    df["Bin"] = df["info"].apply(lambda x: math.floor((num_bins - 1) * (x - min_val)/max_val))
+    df["Bin"] = df["info"].apply(
+        lambda x: math.floor((num_bins - 1) * (x - min_val)/max_val))
 
     conversion_dict = {}
 
@@ -61,24 +51,38 @@ def processs_phylo(filename):
     final_df = phylodev.networkx_to_pandas_df(abstract_g, {"edge_length":"edge_length"})
     final_df["taxon_label"] = final_df["id"]
     final_df.to_csv("compressed_"+filename.split("/")[-1], index=False)
-    return conversion_dict
+    return conversion_dict, final_df
 
 
-sym_conversion_dict = processs_phylo(sym_filename)
-host_conversion_dict = processs_phylo(host_filename)
+def main():
+    if len(sys.argv) <= 3:
+        print("Usage: python abstract_phylogenies.py [Symbiont Phylogeny Snapshot file] [Host Phylogeny Snapshot file] [Interaction Snapshot file] [resolution (optional)]")
 
-interaction_df = pd.read_csv(interaction_filename)
-interaction_df.columns = interaction_df.columns.str.replace(' ', '')
+    sym_filename = sys.argv[1]
+    host_filename = sys.argv[2]
+    interaction_filename = sys.argv[3]
+    num_bins = 1000
+    if len(sys.argv) > 4:
+        num_bins = int(sys.argv[4])
+        
+    sym_conversion_dict = processs_phylo(sym_filename, num_bins)
+    host_conversion_dict = processs_phylo(host_filename, num_bins)
 
-interaction_df.loc[:, "host"] = interaction_df.loc[:, "host"].apply(lambda x: host_conversion_dict[x])
-interaction_df.loc[:, "symbiont"] = interaction_df.loc[:, "symbiont"].apply(lambda x: sym_conversion_dict[x])
+    interaction_df = pd.read_csv(interaction_filename)
+    interaction_df.columns = interaction_df.columns.str.replace(' ', '')
 
-agg_functions = {"host": "first",
-                 "symbiont": "first",
-                 "count": "sum",
-                 "sym_interaction": "mean",
-                 "host_interaction": "mean"
-                 }
+    interaction_df.loc[:, "host"] = interaction_df.loc[:, "host"].apply(lambda x: host_conversion_dict[x])
+    interaction_df.loc[:, "symbiont"] = interaction_df.loc[:, "symbiont"].apply(lambda x: sym_conversion_dict[x])
 
-result = interaction_df.groupby(by=["host", "symbiont"]).aggregate(agg_functions)
-result.to_csv('test.csv', index=False)
+    agg_functions = {"host": "first",
+                    "symbiont": "first",
+                    "count": "sum",
+                    "sym_interaction": "mean",
+                    "host_interaction": "mean"
+                    }
+
+    result = interaction_df.groupby(by=["host", "symbiont"]).aggregate(agg_functions)
+    result.to_csv('abstract_interactions.csv', index=False)
+
+if __name__ == "__main__":
+    main()

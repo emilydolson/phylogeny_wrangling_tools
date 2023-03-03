@@ -1,7 +1,7 @@
 #! /usr/bin/bash
 
 python abstract_phylogenies.py $1 $2 $3
-python make_links.py test.csv
+python make_links.py abstract_interactions
 
 symfile=`basename $1`
 hostfile=`basename $2`
