@@ -59,6 +59,7 @@ def processs_phylo(filename):
         abstract_g.nodes[node]["edge_length"] = dist
 
     final_df = phylodev.networkx_to_pandas_df(abstract_g, {"edge_length":"edge_length"})
+    final_df["taxon_label"] = final_df["id"]
     final_df.to_csv("compressed_"+filename.split("/")[-1], index=False)
     return conversion_dict
 
@@ -69,8 +70,8 @@ host_conversion_dict = processs_phylo(host_filename)
 interaction_df = pd.read_csv(interaction_filename)
 interaction_df.columns = interaction_df.columns.str.replace(' ', '')
 
-interaction_df.loc[:, "host"].apply(lambda x: host_conversion_dict[x])
-interaction_df.loc[:, "symbiont"].apply(lambda x: sym_conversion_dict[x])
+interaction_df.loc[:, "host"] = interaction_df.loc[:, "host"].apply(lambda x: host_conversion_dict[x])
+interaction_df.loc[:, "symbiont"] = interaction_df.loc[:, "symbiont"].apply(lambda x: sym_conversion_dict[x])
 
 agg_functions = {"host": "first",
                  "symbiont": "first",
