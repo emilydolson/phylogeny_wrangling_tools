@@ -27,7 +27,7 @@ def test_make_links():
 
 def test_abstract_phylogeny():
     original_df = phylodev.load_phylogeny_to_pandas_df("test_data/simple_phylogeny.csv")
-    conversion_dict, df = process_phylo(original_df, 20)
+    conversion_dict, df, leaves= process_phylo(original_df, 20)
 
     # Check conversion dict
     for i in range(5):
@@ -68,14 +68,14 @@ def test_abstract_phylogeny():
 
 def test_abstract_phylogeny_complex():
     original_df = phylodev.load_phylogeny_to_pandas_df("test_data/complex_phylogeny.csv")
-    conversion_dict, df = process_phylo(original_df, 20)
+    conversion_dict, df, leaves = process_phylo(original_df, 20)
 
     # Check correspondence
     assert set(df["id"]) == set(conversion_dict.values())
     assert set(original_df.index) == set(conversion_dict.keys())
 
     original_df = phylodev.load_phylogeny_to_pandas_df("test_data/complex_phylogeny_2.csv")
-    conversion_dict, df = process_phylo(original_df, 20)
+    conversion_dict, df, leaves = process_phylo(original_df, 20)
 
     # Check correspondence
     assert set(df["id"]) == set(conversion_dict.values())
@@ -84,13 +84,11 @@ def test_abstract_phylogeny_complex():
 
 def test_enrich():
     df = pd.read_csv("test_data/example_interaction_snapshot.csv")
-    phylo_df = phylodev.load_phylogeny_to_pandas_df("test_data/simple_phylogeny.csv")
     df.columns = df.columns.str.replace(' ', '')
+    df = enrich_interaction_df(df, [9, 10], [3, 4])
 
-    df = enrich_interaction_df(df, phylo_df, phylo_df)
-
-    assert set(df["host"]) == set(phylo_df.index)
-    assert set(df["symbiont"]) == set(phylo_df.index)
+    assert set(df["host"]) == set([1, 2, 3, 4])
+    assert set(df["symbiont"]) == set([1, 2, 3, 9, 10])
 
 
 def test_remove_excess_syms():
@@ -107,25 +105,23 @@ def test_integration():
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
 
     sym_original_df = phylodev.load_phylogeny_to_pandas_df("test_data/complex_phylogeny.csv")
-    sym_conversion_dict, sym_df = process_phylo(sym_original_df, 20)
+    sym_conversion_dict, sym_df, sym_leaves = process_phylo(sym_original_df, 20)
     host_original_df = phylodev.load_phylogeny_to_pandas_df("test_data/complex_phylogeny_2.csv")
-    host_conversion_dict, host_df = process_phylo(host_original_df, 20)
+    host_conversion_dict, host_df, host_leaves = process_phylo(host_original_df, 20)
 
     interaction_df = remove_excess_symbionts(interaction_df, sym_original_df)
-    interaction_df = enrich_interaction_df(interaction_df,
-                                           sym_original_df,
-                                           host_original_df)
-
-    assert set(interaction_df["host"]) == set(host_original_df.index)
-    assert set(interaction_df["symbiont"]) == set(sym_original_df.index)
 
     # print(interaction_df, host_df, host_conversion_dict)
 
     result = convert_interaction_labels(interaction_df,
                                         host_conversion_dict,
                                         sym_conversion_dict)
+    result = enrich_interaction_df(result,
+                                   sym_leaves,
+                                   host_leaves)
+    result = remove_non_leaves(result, sym_leaves, host_leaves)
 
-    assert set(result["host"]) == set(host_df["id"])
-    assert set(result["symbiont"]) == set(sym_df["id"])
+    assert set(result["host"]) == set(host_leaves)
+    assert set(result["symbiont"]) == set(sym_leaves)
 
     verify_link_df(result)
