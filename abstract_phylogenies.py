@@ -8,8 +8,7 @@ import ALifeStdDev.phylogeny as phylodev
 import networkx as nx
 
 
-def processs_phylo(filename, num_bins=1000):
-    df = phylodev.load_phylogeny_to_pandas_df(filename)
+def processs_phylo(df, num_bins=1000, outfilename="compressed.csv"):
 
     min_val = -1
     max_val = 1
@@ -50,8 +49,42 @@ def processs_phylo(filename, num_bins=1000):
 
     final_df = phylodev.networkx_to_pandas_df(abstract_g, {"edge_length":"edge_length"})
     final_df["taxon_label"] = final_df["id"]
-    final_df.to_csv("compressed_"+filename.split("/")[-1], index=False)
+    final_df.to_csv(outfilename, index=False)
     return conversion_dict, final_df
+
+
+def convert_interaction_labels(df, host_dict, sym_dict):
+    df.loc[:, "host"] = df.loc[:, "host"].apply(lambda x: host_dict[x])
+    df.loc[:, "symbiont"] = df.loc[:, "symbiont"].apply(lambda x: sym_dict[x])
+
+    agg_functions = {"host": "first",
+                     "symbiont": "first",
+                     "count": "sum"
+                     }
+
+    return df.groupby(by=["host", "symbiont"]).aggregate(agg_functions)
+
+
+def enrich_interaction_df(interaction_df, sym_df, host_df):
+    missing_syms = set(sym_df.index) - set(interaction_df["symbiont"])
+    missing_hosts = set(host_df.index) - set(interaction_df["host"])
+
+    token_sym = sym_df.index[0]
+    token_host = host_df.index[0]
+
+    for sym in missing_syms:
+        new_row = pd.Series({"host": token_host, "symbiont": sym, "count": 0})
+        interaction_df = pd.concat([interaction_df, new_row.to_frame().T], ignore_index=True)
+
+    for host in missing_hosts:
+        new_row = pd.Series({"host": host, "symbiont": token_sym, "count": 0})
+        interaction_df = pd.concat([interaction_df, new_row.to_frame().T], ignore_index=True)
+  
+    return interaction_df
+
+
+def remove_excess_symbionts(interaction_df, sym_phylo):
+    return interaction_df[interaction_df["symbiont"].apply(lambda x: x in sym_phylo.index)]
 
 
 def main():
@@ -64,25 +97,21 @@ def main():
     num_bins = 1000
     if len(sys.argv) > 4:
         num_bins = int(sys.argv[4])
-        
-    sym_conversion_dict = processs_phylo(sym_filename, num_bins)
-    host_conversion_dict = processs_phylo(host_filename, num_bins)
+    
+    sym_df = phylodev.load_phylogeny_to_pandas_df(sym_filename)
+    host_df = phylodev.load_phylogeny_to_pandas_df(host_filename)
+
+    sym_conversion_dict = processs_phylo(sym_df, num_bins)
+    host_conversion_dict = processs_phylo(host_df, num_bins)
 
     interaction_df = pd.read_csv(interaction_filename)
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
+    interaction_df = enrich_interaction_df(interaction_df, sym_df, host_df)
+    interaction_df = remove_excess_symbionts(interaction_df, sym_df)
 
-    interaction_df.loc[:, "host"] = interaction_df.loc[:, "host"].apply(lambda x: host_conversion_dict[x])
-    interaction_df.loc[:, "symbiont"] = interaction_df.loc[:, "symbiont"].apply(lambda x: sym_conversion_dict[x])
-
-    agg_functions = {"host": "first",
-                    "symbiont": "first",
-                    "count": "sum",
-                    "sym_interaction": "mean",
-                    "host_interaction": "mean"
-                    }
-
-    result = interaction_df.groupby(by=["host", "symbiont"]).aggregate(agg_functions)
+    result = convert_interaction_labels(interaction_df, host_conversion_dict, sym_conversion_dict)
     result.to_csv('abstract_interactions.csv', index=False)
+
 
 if __name__ == "__main__":
     main()
