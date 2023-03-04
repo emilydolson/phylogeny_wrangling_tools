@@ -8,7 +8,7 @@ import ALifeStdDev.phylogeny as phylodev
 import networkx as nx
 
 
-def processs_phylo(df, num_bins=1000, outfilename="compressed.csv"):
+def process_phylo(df, num_bins=1000, outfilename="compressed.csv"):
 
     min_val = -1
     max_val = 1
@@ -47,7 +47,8 @@ def processs_phylo(df, num_bins=1000, outfilename="compressed.csv"):
             curr = g.nodes[n]["info"]
         abstract_g.nodes[node]["edge_length"] = dist
 
-    final_df = phylodev.networkx_to_pandas_df(abstract_g, {"edge_length":"edge_length"})
+    final_df = phylodev.networkx_to_pandas_df(abstract_g, {"edge_length":
+                                                           "edge_length"})
     final_df["taxon_label"] = final_df["id"]
     final_df.to_csv(outfilename, index=False)
     return conversion_dict, final_df
@@ -74,22 +75,28 @@ def enrich_interaction_df(interaction_df, sym_df, host_df):
 
     for sym in missing_syms:
         new_row = pd.Series({"host": token_host, "symbiont": sym, "count": 0})
-        interaction_df = pd.concat([interaction_df, new_row.to_frame().T], ignore_index=True)
+        interaction_df = pd.concat([interaction_df, new_row.to_frame().T],
+                                   ignore_index=True)
 
     for host in missing_hosts:
         new_row = pd.Series({"host": host, "symbiont": token_sym, "count": 0})
-        interaction_df = pd.concat([interaction_df, new_row.to_frame().T], ignore_index=True)
-  
+        interaction_df = pd.concat([interaction_df, new_row.to_frame().T],
+                                   ignore_index=True)
+
     return interaction_df
 
 
 def remove_excess_symbionts(interaction_df, sym_phylo):
-    return interaction_df[interaction_df["symbiont"].apply(lambda x: x in sym_phylo.index)]
+    return interaction_df[interaction_df["symbiont"].apply(
+                                    lambda x: x in sym_phylo.index)]
 
 
 def main():
     if len(sys.argv) <= 3:
-        print("Usage: python abstract_phylogenies.py [Symbiont Phylogeny Snapshot file] [Host Phylogeny Snapshot file] [Interaction Snapshot file] [resolution (optional)]")
+        print("Usage: python abstract_phylogenies.py " +
+              "[Symbiont Phylogeny Snapshot file] " +
+              "[Host Phylogeny Snapshot file] " +
+              "[Interaction Snapshot file] [resolution (optional)]")
 
     sym_filename = sys.argv[1]
     host_filename = sys.argv[2]
@@ -97,12 +104,12 @@ def main():
     num_bins = 1000
     if len(sys.argv) > 4:
         num_bins = int(sys.argv[4])
-    
+
     sym_df = phylodev.load_phylogeny_to_pandas_df(sym_filename)
     host_df = phylodev.load_phylogeny_to_pandas_df(host_filename)
 
-    sym_conversion_dict = processs_phylo(sym_df, num_bins)
-    host_conversion_dict = processs_phylo(host_df, num_bins)
+    sym_conversion_dict = process_phylo(sym_df, num_bins)
+    host_conversion_dict = process_phylo(host_df, num_bins)
 
     interaction_df = pd.read_csv(interaction_filename)
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
