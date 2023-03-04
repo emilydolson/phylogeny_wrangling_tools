@@ -108,15 +108,25 @@ def main():
     sym_df = phylodev.load_phylogeny_to_pandas_df(sym_filename)
     host_df = phylodev.load_phylogeny_to_pandas_df(host_filename)
 
-    sym_conversion_dict = process_phylo(sym_df, num_bins)
-    host_conversion_dict = process_phylo(host_df, num_bins)
+    sym_conversion_dict, new_sym_df = process_phylo(sym_df, num_bins,
+                                                    "compressed_sym.csv")
+    host_conversion_dict, new_host_df = process_phylo(host_df, num_bins,
+                                                      "compressed_host.csv")
 
     interaction_df = pd.read_csv(interaction_filename)
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
-    interaction_df = enrich_interaction_df(interaction_df, sym_df, host_df)
     interaction_df = remove_excess_symbionts(interaction_df, sym_df)
+    interaction_df = enrich_interaction_df(interaction_df, sym_df, host_df)
 
-    result = convert_interaction_labels(interaction_df, host_conversion_dict, sym_conversion_dict)
+    assert set(interaction_df["host"]) == set(host_df.index)
+    assert set(interaction_df["symbiont"]) == set(sym_df.index)
+
+    result = convert_interaction_labels(interaction_df, host_conversion_dict,
+                                        sym_conversion_dict)
+   
+    assert set(result["host"]) == set(new_host_df["id"])
+    assert set(result["symbiont"]) == set(new_sym_df["id"])
+
     result.to_csv('abstract_interactions.csv', index=False)
 
 
