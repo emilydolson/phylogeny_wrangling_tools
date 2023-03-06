@@ -31,4 +31,7 @@ if __name__ == "__main__":
 
     df = pd.read_csv(sys.argv[1])
 
-    make_links(df)
+    if len(sys.argv) > 1:
+        make_links(df, sys.argv[2])
+    else:
+        make_links(df)

@@ -112,18 +112,21 @@ def main():
     host_filename = sys.argv[2]
     interaction_filename = sys.argv[3]
     num_bins = 1000
+    prefix = ""
     if len(sys.argv) > 4:
         num_bins = int(sys.argv[4])
+    if len(sys.argv) > 5:
+        prefix = sys.argv[5]
 
     sym_df = phylodev.load_phylogeny_to_pandas_df(sym_filename)
     host_df = phylodev.load_phylogeny_to_pandas_df(host_filename)
 
     sym_conversion_dict, new_sym_df, sym_leaves = process_phylo(sym_df,
                                                                 num_bins,
-                                                    "compressed_sym.csv")
+                                            prefix + "compressed_sym.csv")
     host_conversion_dict, new_host_df, host_leaves = process_phylo(host_df,
                                                                    num_bins,
-                                                      "compressed_host.csv")
+                                            prefix + "compressed_host.csv")
 
     interaction_df = pd.read_csv(interaction_filename)
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
