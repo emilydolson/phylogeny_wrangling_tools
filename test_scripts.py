@@ -100,6 +100,16 @@ def test_remove_excess_syms():
     assert set(df["symbiont"]) == set([1, 3])
 
 
+def test_remove_non_leaves():
+    df = pd.read_csv("test_data/example_interaction_snapshot.csv")
+    df.columns = df.columns.str.replace(' ', '')
+    df = remove_non_leaves(df, [1, 3], [2])
+    df = enrich_interaction_df(df, [1, 3], [2])
+    print(set(df["host"]), set(df["symbiont"]))
+    assert set(df["host"]) == set([2])
+    assert set(df["symbiont"]) == set([1, 3])
+
+
 def test_integration():
     interaction_df = pd.read_csv("test_data/complex_interaction_snapshot.csv")
     interaction_df.columns = interaction_df.columns.str.replace(' ', '')
@@ -116,10 +126,10 @@ def test_integration():
     result = convert_interaction_labels(interaction_df,
                                         host_conversion_dict,
                                         sym_conversion_dict)
+    result = remove_non_leaves(result, sym_leaves, host_leaves)
     result = enrich_interaction_df(result,
                                    sym_leaves,
                                    host_leaves)
-    result = remove_non_leaves(result, sym_leaves, host_leaves)
 
     assert set(result["host"]) == set(host_leaves)
     assert set(result["symbiont"]) == set(sym_leaves)

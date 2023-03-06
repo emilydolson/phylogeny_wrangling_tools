@@ -131,9 +131,10 @@ def main():
 
     result = convert_interaction_labels(interaction_df, host_conversion_dict,
                                         sym_conversion_dict)
-    result = enrich_interaction_df(result, sym_leaves, host_leaves)
+
     result = remove_non_leaves(result, sym_leaves, host_leaves)
-   
+    result = enrich_interaction_df(result, sym_leaves, host_leaves)
+
     assert set(result["host"]) == set(host_leaves)
     assert set(result["symbiont"]) == set(sym_leaves)
 
